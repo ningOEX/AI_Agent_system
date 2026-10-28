@@ -105,25 +105,76 @@ npm run dev
 | `OSS_*` | 四项全填才启用 OSS，否则走本地 `uploads/` |
 | `DASHSCOPE_API_KEY` | 缺失时 AI 相关接口返回 503，其余业务不受影响 |
 
-## 生产部署（阿里云）
+## 生产部署（阿里云，暂不申请域名）
 
-推荐单机 Docker Compose，一套配置起 `mongo + api + web`：
+没有域名也能部署：直接用「公网 IP + 端口」访问，不需要 DNS，也不涉及 ICP 备案。
+
+| 入口 | 地址 |
+|---|---|
+| 前台博客 | `http://<公网IP>:80` |
+| 后台管理 | `http://<公网IP>:8081` |
+| 后端 API | 两个站点的 `/api` 都由 Nginx 同源反代，不单独暴露端口 |
+
+### 操作流程
+
+**1. 买服务器**：ECS 或轻量应用服务器，建议 **2 核 4G** 起（Vben 后台构建吃内存，2G 容易 OOM），系统选 Alibaba Cloud Linux 3 或 Ubuntu 22.04。
+
+**2. 安全组放行端口**：`80`、`8081`（如以后上 HTTPS 再加 `443`），授权对象 `0.0.0.0/0`。
+
+**3. 装 Docker**（Alibaba Cloud Linux / CentOS）：
 
 ```bash
-cp .env.example .env      # 编辑：MONGO_ROOT_PASSWORD、JWT_SECRET、域名、CLIENT_ORIGIN
-docker compose up -d --build
-docker compose ps
-curl http://<你的域名>/api/health
+sudo dnf install -y docker docker-compose-plugin
+sudo systemctl enable --now docker
+docker compose version     # 确认能输出 2.x 版本
 ```
 
-要点：
+Ubuntu 用 `sudo apt install -y docker.io docker-compose-v2`。
 
-- 安全组放行 `80` / `443`；`BLOG_DOMAIN`、`ADMIN_DOMAIN` 的 A 记录要指向服务器公网 IP
-- 建议服务器 **≥ 2 核 4G**：Vben 后台构建吃内存，2G 机器容易 OOM
+**4. 拉代码并配置**：
+
+```bash
+sudo mkdir -p /opt && cd /opt
+sudo git clone https://github.com/ningOEX/AI_Agent_system.git ai-agent
+cd ai-agent
+cp .env.example .env
+vi .env
+```
+
+`.env` 里必须改这几项：
+
+| 变量 | 说明 |
+|---|---|
+| `MONGO_ROOT_PASSWORD` | 随机强密码，仅用字母数字 |
+| `JWT_SECRET` | 随机长字符串，≥ 32 位 |
+| `CLIENT_ORIGIN` | 改成 `http://<公网IP>,http://<公网IP>:8081` |
+| `DASHSCOPE_API_KEY` | 想要 AI 写作 / 智能客服就填，不填则相关接口返回 503 |
+
+**5. 构建并启动**：
+
+```bash
+docker compose up -d --build      # 首次构建约 5-10 分钟
+docker compose ps
+docker compose logs -f api
+```
+
+**6. 验证**：
+
+```bash
+curl http://127.0.0.1/api/health          # {"status":"ok"}
+curl -I http://127.0.0.1:8081             # HTTP/1.1 200 OK
+```
+
+浏览器打开 `http://<公网IP>` 看博客，`http://<公网IP>:8081` 进后台。
+
+**7. 立刻改默认密码**：`admin` / `admin123` 是启动时自动创建的，进后台第一件事就是改掉。
+
+### 注意事项
+
 - 部署**不会读取** `server/.env`，所有变量由根目录 `.env` 注入 compose
-- 首次登录后立刻修改 `admin` 密码，默认口令等于后台对外开放
-- HTTPS：证书放到 `nginx/certs/`（`fullchain.pem` + `privkey.pem`），并放开 [nginx/default.conf.template](nginx/default.conf.template) 末尾注释掉的 443 配置
-- SSE 流式：Nginx 已配置 `proxy_buffering off` 与 300s 超时，缺失会导致 AI/客服回复一次性吐出或中断
+- SSE 流式：Nginx 已配 `proxy_buffering off` 与 300s 超时，去掉会导致 AI/客服回复一次性吐出或中断
+- 上传图片默认落 `server/uploads/`（已挂载到宿主机），换服务器记得一起迁移
+- 以后拿到域名：把 `nginx/default.conf.template` 里的 `server_name _` 改成域名、放开末尾注释的 443 段，再改 `.env` 的 `CLIENT_ORIGIN` 即可。国内服务器**绑定域名提供 Web 服务需要 ICP 备案**，用 IP 访问则不需要
 
 ## 版本控制说明
 

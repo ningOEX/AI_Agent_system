@@ -74,11 +74,13 @@ services:
       dockerfile: Dockerfile.web
     restart: unless-stopped
     ports:
-      - "80:80"
+      # 无域名方案：直接 公网IP:端口 访问
+      - "${BLOG_PORT:-80}:${BLOG_PORT:-80}"
+      - "${ADMIN_PORT:-8081}:${ADMIN_PORT:-8081}"
       - "443:443"
     environment:
-      BLOG_DOMAIN: ${BLOG_DOMAIN}
-      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      BLOG_PORT: ${BLOG_PORT:-80}
+      ADMIN_PORT: ${ADMIN_PORT:-8081}
       API_UPSTREAM: api:5000
     volumes:
       # 启用 HTTPS 时把证书放这里（未启用时该目录为空也不影响启动）
