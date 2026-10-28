@@ -117,7 +117,7 @@ npm run dev
 
 ### 操作流程
 
-**1. 买服务器**：ECS 或轻量应用服务器，建议 **2 核 4G** 起（Vben 后台构建吃内存，2G 容易 OOM），系统选 Alibaba Cloud Linux 3 或 Ubuntu 22.04。
+**1. 买服务器**：ECS 或轻量应用服务器，**2 核 2G 即可**（前端在本地构建，服务器只跑 Node + Mongo + Nginx），系统选 Alibaba Cloud Linux 3 或 Ubuntu 22.04。
 
 **2. 安全组放行端口**：`80`、`8081`（如以后上 HTTPS 再加 `443`），授权对象 `0.0.0.0/0`。
 
@@ -150,15 +150,36 @@ vi .env
 | `CLIENT_ORIGIN` | 改成 `http://<公网IP>,http://<公网IP>:8081` |
 | `DASHSCOPE_API_KEY` | 想要 AI 写作 / 智能客服就填，不填则相关接口返回 503 |
 
-**5. 构建并启动**：
+**5. 本地构建前端**（在你自己的 Windows 机器上执行，服务器不参与前端构建）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-frontend.ps1
+```
+
+产物汇总到仓库根目录：`dist/blog`（前台）、`dist/admin`（后台）。
+
+带参数可一步完成构建 + 上传 + 重启：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-frontend.ps1 -Server root@<公网IP>
+```
+
+**6. 上传产物并启动服务**（服务器执行）：
 
 ```bash
-docker compose up -d --build      # 首次构建约 5-10 分钟
+# 本机：打包上传（未用 -Server 参数时）
+tar -czf dist.tar.gz dist
+scp dist.tar.gz root@<公网IP>:/opt/ai-agent/
+
+# 服务器：解压 + 启动
+cd /opt/ai-agent
+tar -xzf dist.tar.gz && rm -f dist.tar.gz
+docker compose up -d          # 只构建后端镜像，1-2 分钟
 docker compose ps
 docker compose logs -f api
 ```
 
-**6. 验证**：
+**7. 验证**：
 
 ```bash
 curl http://127.0.0.1/api/health          # {"status":"ok"}
@@ -167,11 +188,13 @@ curl -I http://127.0.0.1:8081             # HTTP/1.1 200 OK
 
 浏览器打开 `http://<公网IP>` 看博客，`http://<公网IP>:8081` 进后台。
 
-**7. 立刻改默认密码**：`admin` / `admin123` 是启动时自动创建的，进后台第一件事就是改掉。
+**8. 立刻改默认密码**：`admin` / `admin123` 是启动时自动创建的，进后台第一件事就是改掉。
 
 ### 注意事项
 
 - 部署**不会读取** `server/.env`，所有变量由根目录 `.env` 注入 compose
+- 前端构建在本地完成，服务器只挂载 `./dist` 静态目录；改前端后重跑 `scripts\build-frontend.ps1` 再 `docker compose restart web` 即可，**不需要重建后端镜像**
+- 若坚持在服务器构建前端（内存 ≥ 4G），用 `docker build -f Dockerfile.web -t ai-agent-web:local .` 后以 `WEB_IMAGE=ai-agent-web:local docker compose up -d` 启动
 - SSE 流式：Nginx 已配 `proxy_buffering off` 与 300s 超时，去掉会导致 AI/客服回复一次性吐出或中断
 - 上传图片默认落 `server/uploads/`（已挂载到宿主机），换服务器记得一起迁移
 - 以后拿到域名：把 `nginx/default.conf.template` 里的 `server_name _` 改成域名、放开末尾注释的 443 段，再改 `.env` 的 `CLIENT_ORIGIN` 即可。国内服务器**绑定域名提供 Web 服务需要 ICP 备案**，用 IP 访问则不需要
