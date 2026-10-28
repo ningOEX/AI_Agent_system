@@ -22,6 +22,8 @@ export const overridesPreferences = defineOverridesPreferences({
     name: import.meta.env.VITE_APP_TITLE,
     // 本项目后端未提供 refresh token 接口，关闭自动刷新，401 时直接重新登录
     enableRefreshToken: false,
+    // 后端未提供 /menu/all 动态菜单接口，走前端静态路由表
+    accessMode: 'frontend',
   },
   copyright: appCopyrightPreferences,
 });
