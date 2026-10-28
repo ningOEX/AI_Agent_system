@@ -24,7 +24,7 @@ ENV VITE_GLOB_API_URL=/api
 ENV VITE_ARCHIVER=false
 # Vben 构建占用内存较高，防止小内存机器构建时 OOM
 ENV NODE_OPTIONS=--max-old-space-size=4096
-RUN pnpm install --frozen-lockfile --registry=https://registry.npmmirror.com
+RUN pnpm install --no-frozen-lockfile --registry=https://registry.npmmirror.com
 RUN pnpm build
 
 # ---------- 阶段 3：Nginx 静态托管 + 反向代理 ----------
