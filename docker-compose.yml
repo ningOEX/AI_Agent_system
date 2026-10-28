@@ -1,0 +1,96 @@
+# ============================================================
+# 生产部署编排：MongoDB + Express 后端 + Nginx(两个前端 + 反向代理)
+# 使用方式：cp .env.example .env  →  改好里面的值  →  docker compose up -d --build
+# ============================================================
+name: ai-agent-blog
+
+services:
+  # ---------------- MongoDB ----------------
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-app}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - internal
+    # 不对宿主机暴露 27017，只允许内部网络访问
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --username
+        - ${MONGO_ROOT_USER:-app}
+        - --password
+        - ${MONGO_ROOT_PASSWORD}
+        - --authenticationDatabase
+        - admin
+        - --eval
+        - db.adminCommand('ping')
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # ---------------- 后端 API ----------------
+  api:
+    build:
+      context: ./server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      TZ: Asia/Shanghai
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-app}:${MONGO_ROOT_PASSWORD}@mongo:27017/login_demo?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN}
+      CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-true}
+      SMS_ENABLED: ${SMS_ENABLED:-false}
+      CONTENT_FILTER_ENABLED: ${CONTENT_FILTER_ENABLED:-true}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+      OSS_ENDPOINT: ${OSS_ENDPOINT:-oss-cn-hangzhou.aliyuncs.com}
+      OSS_BUCKET: ${OSS_BUCKET:-}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      CHAT_MODEL: ${CHAT_MODEL:-qwen-plus}
+    volumes:
+      # 本地存储模式的上传文件持久化到宿主机
+      - ./server/uploads:/app/uploads
+    networks:
+      - internal
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # ---------------- 前端 + 网关 ----------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BLOG_DOMAIN: ${BLOG_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      API_UPSTREAM: api:5000
+    volumes:
+      # 启用 HTTPS 时把证书放这里（未启用时该目录为空也不影响启动）
+      - ./nginx/certs:/etc/nginx/certs:ro
+    networks:
+      - internal
+    depends_on:
+      - api
+
+volumes:
+  mongo-data:
+
+networks:
+  internal:
+    driver: bridge

@@ -1,0 +1,70 @@
+# ============================================
+# 根级 .gitignore —— 递归作用所有子目录
+# 优先级高于子目录的 .gitignore
+# ============================================
+
+# ---- 环境变量（最高优先级，严禁泄露）----
+.env
+.env.*
+!.env.example
+!.env.*.example
+.env.local
+.env.*.local
+
+# client(Vben) 的构建期配置：不含任何密钥，但缺失会导致生产构建丢掉路由模式/应用标题等
+!client/.env
+!client/.env.development
+!client/.env.production
+
+# ---- Node 依赖与构建产物 ----
+node_modules/
+dist/
+dist-ssr/
+build/
+coverage/
+*.log
+logs/
+.nitro
+.output
+.turbo
+.cache
+.pnpm-store
+.pnpm-store/
+dist.zip
+dist-ssr.zip
+
+# ---- 编辑器 & IDE ----
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.history/
+.cursor/
+
+# ---- 系统文件 ----
+.DS_Store
+Thumbs.db
+
+# ---- AI Agent 本地记录 ----
+.agent/
+.agents/
+.claude/
+.codex/
+datalog/
+.playwright-mcp/
+skills-lock.json
+.trae/
+
+# ---- 测试 & 覆盖率 ----
+test-output.css
+test-output.js
+*.tsbuildinfo
+
+# ---- 本地运行时数据（按需加）----
+# 本地上传目录：用户上传的图片属于运行时数据，不入库（生产用 volume 挂载）
+server/uploads/

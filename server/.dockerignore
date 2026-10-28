@@ -1,0 +1,9 @@
+# 后端镜像构建忽略项（注意：这个文件必须放在 server/ 目录下，
+# 因为 build context 是 ./server，Docker 只认 context 内的 .dockerignore）
+
+node_modules
+.env
+.env.*
+uploads
+**/*.log
+Dockerfile

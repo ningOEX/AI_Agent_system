@@ -1,0 +1,37 @@
+# ============================================================
+# 前端网关镜像：构建 blog-web + client 两个前端，打进同一个 Nginx
+# 构建上下文：仓库根目录（docker compose 已指定）
+# ============================================================
+
+# ---------- 阶段 1：构建前台博客 blog-web ----------
+FROM node:22-alpine AS blog-build
+WORKDIR /app
+RUN npm config set registry https://registry.npmmirror.com
+COPY blog-web/package.json blog-web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY blog-web/ ./
+RUN npm run build
+
+# ---------- 阶段 2：构建后台管理 client（Vben + pnpm workspace） ----------
+FROM node:22 AS client-build
+WORKDIR /app
+RUN npm config set registry https://registry.npmmirror.com && npm i -g pnpm@10
+COPY client/ ./
+# 生产环境接口地址：同域 /api，由 Nginx 反向代理到后端
+# （覆盖 client/.env.production 里的 mock 地址，Vite 中 process.env 优先级高于 .env 文件）
+ENV VITE_GLOB_API_URL=/api
+# 不在镜像里生成 dist.zip（.env.production 默认开启，会白白占空间）
+ENV VITE_ARCHIVER=false
+# Vben 构建占用内存较高，防止小内存机器构建时 OOM
+ENV NODE_OPTIONS=--max-old-space-size=4096
+RUN pnpm install --frozen-lockfile --registry=https://registry.npmmirror.com
+RUN pnpm build
+
+# ---------- 阶段 3：Nginx 静态托管 + 反向代理 ----------
+FROM nginx:1.27-alpine
+# 前台挂载到 /usr/share/nginx/html/blog，后台挂载到 /usr/share/nginx/html/admin
+COPY --from=blog-build /app/dist /usr/share/nginx/html/blog
+COPY --from=client-build /app/dist /usr/share/nginx/html/admin
+# 官方镜像启动时会用 envsubst 渲染 templates/*.template → conf.d/*.conf
+COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
+EXPOSE 80 443

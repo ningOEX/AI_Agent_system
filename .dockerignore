@@ -1,0 +1,23 @@
+# 构建镜像时排除的内容（减小上下文、避免把本机密钥打进镜像）
+
+**/node_modules
+**/dist
+**/.git
+**/.gitignore
+
+# 本机开发用的环境变量文件（生产环境变量由 docker compose 注入）
+server/.env
+client/.env.local
+blog-web/.env.local
+
+# 运行日志
+**/*.log
+
+# 宿主机上传目录（通过 volume 挂载，不打进镜像）
+server/uploads
+
+# 网关镜像只构建两个前端，后端目录不参与（后端有独立的 server/.dockerignore）
+server
+
+# 本地证书目录（通过 volume 挂载）
+nginx/certs
