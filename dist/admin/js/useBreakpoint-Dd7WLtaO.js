@@ -1,0 +1,1 @@
+import{ct as e,ft as t,xn as n}from"./runtime-core.esm-bundler-CVYDec6U.js";import{n as r}from"./responsiveObserve-CzqTqfjA.js";function i(){let i=n({}),a=null,o=r();return e(()=>{a=o.value.subscribe(e=>{i.value=e})}),t(()=>{o.value.unsubscribe(a)}),i}export{i as t};

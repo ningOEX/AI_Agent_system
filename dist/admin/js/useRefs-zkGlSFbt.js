@@ -1,0 +1,1 @@
+import{at as e,vn as t}from"./runtime-core.esm-bundler-CVYDec6U.js";var n=()=>{let n=t(new Map);return e(()=>{n.value=new Map}),[e=>t=>{n.value.set(e,t)},n]};export{n as t};

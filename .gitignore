@@ -18,7 +18,14 @@
 
 # ---- Node 依赖与构建产物 ----
 node_modules/
-dist/
+# 子项目 dist 忽略（blog-web/ client/ server/ 各自内部的构建产物）
+blog-web/dist/
+client/dist/
+server/dist/
+client/.vite/
+blog-web/.vite/
+# 根目录 dist/ 是本地前端构建产物（scripts/build-frontend.ps1 输出）
+# 包含 dist/blog 和 dist/admin，需提交进仓库供服务器 docker compose 直接挂载
 dist-ssr/
 build/
 coverage/
@@ -32,6 +39,7 @@ logs/
 .pnpm-store/
 dist.zip
 dist-ssr.zip
+dist.tar.gz
 
 # ---- 编辑器 & IDE ----
 .idea/
