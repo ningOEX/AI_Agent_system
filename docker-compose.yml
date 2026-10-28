@@ -68,12 +68,11 @@ services:
         condition: service_healthy
 
   # ---------------- 前端静态托管 + 网关 ----------------
-  # Docker 构建两个前端（blog-web 用 npm，client 用 pnpm workspace 识别 client/packages）
-  # 三阶段：blog-build → client-build → nginx
+  # 本地构建产物挂载（服务器零构建）
+  # 前端在本地 Windows 构建：scripts/build-frontend.ps1 → dist/blog + dist/admin
+  # 本地上传到服务器 /opt/ai-agent/dist/ 目录即可
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile.web
+    image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
       - "${BLOG_PORT:-80}:${BLOG_PORT:-80}"
@@ -84,6 +83,8 @@ services:
       ADMIN_PORT: ${ADMIN_PORT:-8081}
       API_UPSTREAM: api:5000
     volumes:
+      - ./dist/blog:/usr/share/nginx/html/blog:ro
+      - ./dist/admin:/usr/share/nginx/html/admin:ro
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./nginx/certs:/etc/nginx/certs:ro
     networks:
