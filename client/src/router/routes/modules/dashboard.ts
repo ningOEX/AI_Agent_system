@@ -58,6 +58,8 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/blog/edit.vue'),
         meta: {
           hideInMenu: true,
+          // 缓存页面：切换菜单/标签页时保留已输入的内容，不重新挂载重置表单
+          keepAlive: true,
           title: '新建文章',
         },
       },
@@ -67,6 +69,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/blog/edit.vue'),
         meta: {
           hideInMenu: true,
+          keepAlive: true,
           title: '编辑文章',
         },
       },
