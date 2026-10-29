@@ -14,6 +14,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/BlogDetail.vue'),
     meta: { title: '博客详情' },
   },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/Profile.vue'),
+    meta: { title: '个人中心' },
+  },
 ];
 
 const router = createRouter({

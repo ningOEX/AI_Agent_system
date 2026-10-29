@@ -78,6 +78,8 @@ router.get(
     query('status').optional().isIn(['draft', 'scheduled', 'published']),
     query('category').optional().isString().trim(),
     query('featured').optional().isBoolean().toBoolean(),
+    // scope=mine：强制只看自己的文章（前台个人中心使用，admin 也只看自己）
+    query('scope').optional().isIn(['mine']),
   ],
   async (req, res, next) => {
     try {
@@ -89,8 +91,8 @@ router.get(
 
       const filter = {};
 
-      // 一对一隔离：admin 看所有，普通用户只看自己的
-      if (req.user.role !== 'admin') {
+      // 一对一隔离：admin 看所有，普通用户只看自己的；scope=mine 时 admin 也只看自己
+      if (req.query.scope === 'mine' || req.user.role !== 'admin') {
         filter.userId = req.user.id;
       }
 

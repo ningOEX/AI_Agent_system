@@ -1,0 +1,162 @@
+# ============================================================
+# Nginx 网关模板（由官方镜像启动时 envsubst 渲染）
+# 无域名方案：直接用「公网 IP + 端口」访问，不需要 DNS
+#   前台博客 → http://<公网IP>:${BLOG_PORT}
+#   后台管理 → http://<公网IP>:${ADMIN_PORT}
+# 以后拿到域名，把下面的 server_name _ 改成实际域名、再加 443 段即可
+# 可用变量：${BLOG_PORT} ${ADMIN_PORT} ${API_UPSTREAM}
+# ============================================================
+
+# ---------- 前台博客 ----------
+server {
+    listen ${BLOG_PORT} default_server;
+    server_name _;
+
+    root /usr/share/nginx/html/blog;
+    index index.html;
+
+    client_max_body_size 50m;
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    location /api/ {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        # SSE 流式（AI 回复、智能客服）必须关闭缓冲
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # 本地存储模式的上传文件由后端直出
+    location /uploads/ {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    location /assets/ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # 单页应用 history 路由回退
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# ---------- 后台管理 ----------
+server {
+    listen ${ADMIN_PORT} default_server;
+    server_name _;
+
+    root /usr/share/nginx/html/admin;
+    index index.html;
+
+    client_max_body_size 50m;
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    location /api/ {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    location /uploads/ {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    location /assets/ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# ============================================================
+# HTTPS（等你有域名 + 证书后再启用）
+# 1) 把上面的 server_name _ 改成你的域名
+# 2) 证书放到 ./nginx/certs/（fullchain.pem / privkey.pem）
+# 3) 删掉下面两段的注释
+# 注意：国内服务器绑定域名提供服务需要 ICP 备案
+# ============================================================
+# server {
+#     listen 443 ssl;
+#     http2 on;
+#     server_name blog.example.com;
+#     ssl_certificate     /etc/nginx/certs/fullchain.pem;
+#     ssl_certificate_key /etc/nginx/certs/privkey.pem;
+#     ssl_protocols TLSv1.2 TLSv1.3;
+#     root /usr/share/nginx/html/blog;
+#     index index.html;
+#     client_max_body_size 50m;
+#     location /api/ {
+#         proxy_pass http://${API_UPSTREAM};
+#         proxy_http_version 1.1;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_set_header Connection "";
+#         proxy_buffering off;
+#         proxy_read_timeout 300s;
+#     }
+#     location /uploads/ { proxy_pass http://${API_UPSTREAM}; }
+#     location / { try_files $uri $uri/ /index.html; }
+# }
+#
+# server {
+#     listen 443 ssl;
+#     http2 on;
+#     server_name admin.example.com;
+#     ssl_certificate     /etc/nginx/certs/fullchain.pem;
+#     ssl_certificate_key /etc/nginx/certs/privkey.pem;
+#     ssl_protocols TLSv1.2 TLSv1.3;
+#     root /usr/share/nginx/html/admin;
+#     index index.html;
+#     client_max_body_size 50m;
+#     location /api/ {
+#         proxy_pass http://${API_UPSTREAM};
+#         proxy_http_version 1.1;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_set_header Connection "";
+#         proxy_buffering off;
+#         proxy_read_timeout 300s;
+#     }
+#     location /uploads/ { proxy_pass http://${API_UPSTREAM}; }
+#     location / { try_files $uri $uri/ /index.html; }
+# }

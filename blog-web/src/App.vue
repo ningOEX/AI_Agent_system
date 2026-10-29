@@ -19,8 +19,9 @@ import ChatWidget from '@/components/ChatWidget.vue';
 const { mode, themeName, current, THEMES, toggleMode, setThemeName } = useTheme();
 const themeOpen = ref(false);
 
+const user = getStoredUser();
 // 管理员账号不展示智能客服（客服由管理员在后台回复，前台弹窗只给普通用户/访客）
-const isAdmin = getStoredUser()?.role === 'admin';
+const isAdmin = user?.role === 'admin';
 
 function pickTheme(n: ThemeName) {
   setThemeName(n);
@@ -53,6 +54,15 @@ function pickTheme(n: ThemeName) {
             active-class="text-brand-600 dark:text-brand-400"
           >
             博客大厅
+          </RouterLink>
+
+          <RouterLink
+            v-if="user"
+            to="/profile"
+            class="relative rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400"
+            active-class="text-brand-600 dark:text-brand-400"
+          >
+            个人中心
           </RouterLink>
 
           <!-- 主题切换下拉 -->

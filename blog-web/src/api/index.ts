@@ -229,3 +229,34 @@ export function getPublicTagsApi() {
 export function getPublicArchiveApi() {
   return http.get<ArchiveItem[]>('/public/archive').then((r) => r.data);
 }
+
+// ---------- 个人中心：我的文章（需登录，scope=mine 强制只看自己） ----------
+export interface MyBlogItem {
+  _id: string;
+  title: string;
+  category: string;
+  summary: string;
+  tags: string[];
+  coverImage: string;
+  views: number;
+  featured: boolean;
+  contentType?: 'ai' | 'original';
+  status: 'draft' | 'published' | 'scheduled';
+  publishedAt?: string;
+  scheduledAt?: string;
+  createdAt: string;
+}
+
+export interface MyBlogListResult {
+  items: MyBlogItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export function getMyBlogsApi() {
+  return http
+    .get<MyBlogListResult>('/blogs', { params: { pageSize: 100, scope: 'mine' } })
+    .then((r) => r.data);
+}
