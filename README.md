@@ -190,6 +190,28 @@ curl -I http://127.0.0.1:8081             # HTTP/1.1 200 OK
 
 **8. 立刻改默认密码**：`admin` / `admin123` 是启动时自动创建的，进后台第一件事就是改掉。
 
+### 日常更新命令（服务器执行）
+
+**后端代码更新 —— 一键重建 api 镜像**：
+
+```bash
+cd /opt/ai-agent
+./update-api.sh              # 常规更新（走 Docker 缓存，快）
+./update-api.sh --no-cache   # 新增依赖不生效时全量重建（慢）
+```
+
+脚本来自仓库 [scripts/update-api.sh](scripts/update-api.sh)，首次上传到 `/opt/ai-agent/` 后需执行一次 `chmod +x update-api.sh`。流程：拉取 main 分支最新 tarball → rsync 同步 `server/`（自动保留 `.env`、`uploads/`、`node_modules/`）→ 重建镜像 → 强制重建容器 → 健康检查并输出日志。**不使用 `down -v`，不会删除 MongoDB 数据卷**。
+
+**前端静态资源更新 —— 重启 web 容器**：
+
+Xftp 覆盖 `/opt/ai-agent/dist` 下对应子目录（`blog` 或 `admin`，权限 755/644）后执行：
+
+```bash
+/opt/ai-agent/restart-web.sh
+```
+
+该脚本为服务器端一键脚本，自动重启 nginx 容器并探测前台（80）、后台（8081）端口可用性。前端更新**无需重建任何镜像**。
+
 ### 注意事项
 
 - 部署**不会读取** `server/.env`，所有变量由根目录 `.env` 注入 compose
