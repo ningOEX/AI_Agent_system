@@ -3,12 +3,15 @@ import { onMounted, ref } from 'vue';
 
 import { useAccessStore, useUserStore } from '@vben/stores';
 
+import { useTabs } from '@vben/hooks';
+
 // 博客前台（blog-web）独立站点地址：开发 http://localhost:3000、生产 http://123.57.41.200
 const BLOG_WEB_URL =
   import.meta.env.VITE_GLOB_BLOG_WEB_URL || 'http://localhost:3000';
 
 const accessStore = useAccessStore();
 const userStore = useUserStore();
+const { closeCurrentTab } = useTabs();
 
 const target = ref('');
 
@@ -28,9 +31,18 @@ function buildTargetUrl() {
   return url.toString();
 }
 
-onMounted(() => {
+onMounted(async () => {
   target.value = buildTargetUrl();
-  window.location.replace(target.value);
+
+  // 新开一个浏览器标签页打博客前台；被弹窗拦截时退回当前页跳转
+  const win = window.open(target.value, '_blank');
+  if (!win) {
+    window.location.replace(target.value);
+    return;
+  }
+
+  // 新页面已打开，关闭后台这个中转标签页，回到进入前的页面
+  await closeCurrentTab();
 });
 </script>
 
