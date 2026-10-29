@@ -148,24 +148,41 @@ export async function fetchMeApi(): Promise<null | StoredUser> {
 
 /**
  * 启动时初始化登录态：
- *  - 解析 URL 上的 ?token=（后台「博客前台」菜单跳转时携带）并存 localStorage，随后清理 URL
- *  - 用 token 拉取 /auth/me 刷新用户名、角色、头像，保证角色信息准确（JWT 内不含 role）
+ *  - index.html 的内联脚本已把地址栏 token/role 暂存到 window.__PENDING_AUTH__ 并清理 URL；
+ *    这里优先从该暂存取（同时兜底直接读 URL，兼容未经内联脚本的场景）
+ *  - 存 token 后用 /auth/me 刷新用户名、角色、头像，保证角色信息准确（JWT 内不含 role）
  *  - 无 token 但本地已有登录态时同样刷新一次，避免角色缺失导致前台模块判断失效
  */
 export async function handleTokenCallback(): Promise<void> {
-  const params = new URLSearchParams(location.search);
-  const token = params.get('token');
-  const roleParam = params.get('role') || undefined;
+  let token: null | string = null;
+  let roleParam: string | undefined;
+
+  const pending = (window as any).__PENDING_AUTH__ as
+    | { role?: string; token: null | string }
+    | undefined;
+  if (pending) {
+    delete (window as any).__PENDING_AUTH__;
+    token = pending.token;
+    roleParam = pending.role;
+  } else {
+    const params = new URLSearchParams(location.search);
+    token = params.get('token');
+    roleParam = params.get('role') || undefined;
+    if (token || roleParam) {
+      // 兜底清理地址栏（正常情况内联脚本已经清过）
+      params.delete('token');
+      params.delete('role');
+      const cleanQuery = params.toString();
+      history.replaceState(
+        null,
+        '',
+        `${location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${location.hash}`,
+      );
+    }
+  }
 
   if (token) {
     localStorage.setItem(TOKEN_KEY, token);
-
-    // 清掉 URL 里的 token/role（安全：别留下可分享的带 token URL）
-    params.delete('token');
-    params.delete('role');
-    const cleanQuery = params.toString();
-    const cleanUrl = `${location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${location.hash}`;
-    history.replaceState(null, '', cleanUrl);
   }
 
   const user = await fetchMeApi();

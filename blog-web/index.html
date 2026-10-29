@@ -4,6 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // 尽早处理地址栏上的登录票据：HTML 解析时立即执行，不等 JS bundle 下载。
+      // 把 token/role 暂存到 window，随后立刻从地址栏抹掉，避免 token 长时间残留。
+      (function () {
+        try {
+          var u = new URL(location.href);
+          var token = u.searchParams.get('token');
+          var role = u.searchParams.get('role');
+          if (token || role) {
+            window.__PENDING_AUTH__ = { token: token, role: role };
+            u.searchParams.delete('token');
+            u.searchParams.delete('role');
+            history.replaceState(null, '', u.pathname + u.search + u.hash);
+          }
+        } catch (e) { /* 忽略 */ }
+      })();
+    </script>
     <title>blog-web</title>
   </head>
   <body>
