@@ -3,6 +3,7 @@ import type { AuditLogDetail, AuditLogItem, AuditLogQuery } from '#/api/audit';
 
 import { computed, h, onMounted, reactive, ref } from 'vue';
 
+import { useMediaQuery } from '@vueuse/core';
 import dayjs from 'dayjs';
 
 import {
@@ -108,6 +109,11 @@ const detailLoading = ref(false);
 const detail = ref<AuditLogDetail | null>(null);
 // 同一操作对象的全部改动记录（列表只展示最新一条，完整历史在这里看）
 const history = ref<AuditLogItem[]>([]);
+
+// 移动端适配：抽屉全屏、描述列表单列，避免 720px 固定宽度超出小屏
+const isMobile = useMediaQuery('(max-width: 640px)');
+const drawerWidth = computed(() => (isMobile.value ? '100%' : 720));
+const descColumn = computed(() => (isMobile.value ? 1 : 2));
 
 /** 打开详情：同时拉取当前记录详情与同一对象的完整改动历史 */
 async function openDetail(record: AuditLogItem) {
@@ -367,12 +373,12 @@ onMounted(loadList);
     <Drawer
       v-model:open="drawerOpen"
       title="留痕详情"
-      :width="720"
+      :width="drawerWidth"
       :body-style="{ paddingBottom: '24px' }"
     >
       <div v-if="detailLoading && !detail" class="py-10 text-center text-gray-400">加载中…</div>
       <template v-else-if="detail">
-        <Descriptions :column="2" size="small" bordered>
+        <Descriptions :column="descColumn" size="small" bordered>
           <Descriptions.Item label="操作时间">
             {{ fmtDate(detail.createdAt) }}
           </Descriptions.Item>
@@ -386,10 +392,10 @@ onMounted(loadList);
             {{ detail.operator?.username || '访客' }}
             <Tag v-if="detail.operator?.role === 'admin'" color="gold">管理员</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="对象" :span="2">
+          <Descriptions.Item label="对象" :span="descColumn">
             {{ detail.targetLabel || detail.targetId || '-' }}
           </Descriptions.Item>
-          <Descriptions.Item label="接口" :span="2">
+          <Descriptions.Item label="接口" :span="descColumn">
             {{ detail.method }} {{ detail.path }}
           </Descriptions.Item>
           <Descriptions.Item label="结果">
@@ -457,9 +463,9 @@ onMounted(loadList);
             <div
               v-for="item in changedFields"
               :key="item.field"
-              class="flex gap-2 border-b border-solid px-3 py-2 text-xs last:border-b-0"
+              class="flex flex-col gap-1 border-b border-solid px-3 py-2 text-xs last:border-b-0 sm:flex-row sm:gap-2"
             >
-              <span class="w-28 shrink-0 font-medium">{{ item.field }}</span>
+              <span class="shrink-0 font-medium sm:w-28">{{ item.field }}</span>
               <span class="flex-1 break-all text-red-500">- {{ item.from }}</span>
               <span class="flex-1 break-all text-green-600">+ {{ item.to }}</span>
             </div>
@@ -467,7 +473,7 @@ onMounted(loadList);
         </div>
 
         <!-- 变更前 / 变更后完整快照 -->
-        <div class="mt-5 grid grid-cols-2 gap-3">
+        <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <div class="mb-2 text-sm font-semibold">变更前</div>
             <pre
