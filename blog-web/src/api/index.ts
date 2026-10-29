@@ -30,12 +30,19 @@ http.interceptors.response.use(
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
-export function getStoredUser(): { username: string; role?: string } | null {
+
+export interface StoredUser {
+  username: string;
+  role?: string;
+  avatar?: string;
+}
+
+export function getStoredUser(): null | StoredUser {
   const raw = localStorage.getItem(USER_KEY);
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return null; }
 }
-export function setAuth(token: string, user: { username: string; role?: string }) {
+export function setAuth(token: string, user: StoredUser) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
@@ -119,7 +126,8 @@ export function createPublicCommentApi(blogId: string, data: {
 }
 
 // ---------- 登录 ----------
-export const CMS_URL = 'http://localhost:5666';
+// 管理后台地址：开发 http://localhost:5666、生产 http://123.57.41.200:8081
+export const CMS_URL = import.meta.env.VITE_CMS_URL || 'http://localhost:5666';
 
 /** 跳转到 CMS 登录页，登录成功后带 token 跳回当前页 */
 export function goLogin() {
@@ -127,30 +135,55 @@ export function goLogin() {
   window.location.href = `${CMS_URL}/?callback=${callback}`;
 }
 
-/** 从 URL ?token= 参数换票：存 localStorage 并清理 URL，返回换票后的 user 信息（可能为 null） */
-export function handleTokenCallback(): { token: string; username: string } | null {
+/** 用当前 token 拉取后端用户信息（含角色），失败返回 null */
+export async function fetchMeApi(): Promise<null | StoredUser> {
+  if (!getStoredToken()) return null;
+  try {
+    const { data } = await http.get<{ user: StoredUser }>('/auth/me');
+    return data.user;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 启动时初始化登录态：
+ *  - 解析 URL 上的 ?token=（后台「博客前台」菜单跳转时携带）并存 localStorage，随后清理 URL
+ *  - 用 token 拉取 /auth/me 刷新用户名、角色、头像，保证角色信息准确（JWT 内不含 role）
+ *  - 无 token 但本地已有登录态时同样刷新一次，避免角色缺失导致前台模块判断失效
+ */
+export async function handleTokenCallback(): Promise<void> {
   const params = new URLSearchParams(location.search);
   const token = params.get('token');
-  if (!token) return null;
+  const roleParam = params.get('role') || undefined;
 
-  // 存 token
-  localStorage.setItem(TOKEN_KEY, token);
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
 
-  // 清掉 URL 里的 token（安全：别留下可分享的带 token URL）
-  params.delete('token');
-  const cleanQuery = params.toString();
-  const cleanUrl = `${location.pathname}${cleanQuery ? '?' + cleanQuery : ''}${location.hash}`;
-  history.replaceState(null, '', cleanUrl);
+    // 清掉 URL 里的 token/role（安全：别留下可分享的带 token URL）
+    params.delete('token');
+    params.delete('role');
+    const cleanQuery = params.toString();
+    const cleanUrl = `${location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${location.hash}`;
+    history.replaceState(null, '', cleanUrl);
+  }
 
-  // 调用后端 /auth/me 拿到 username 存起来
-  // （后端如果没有 /auth/me，可以直接从 JWT payload 解）
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const user = { username: payload.username || payload.sub || '用户' };
+  const user = await fetchMeApi();
+  if (user) {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
-    return { token, username: user.username };
-  } catch {
-    return { token, username: '用户' };
+    return;
+  }
+
+  // /auth/me 不可用时兜底：从 JWT 解出用户名，角色取 URL 参数
+  if (token) {
+    let username = '用户';
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      username = payload.username || payload.sub || '用户';
+    } catch {
+      // 解析失败保持默认用户名
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify({ role: roleParam, username }));
   }
 }
 

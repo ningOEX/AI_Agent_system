@@ -2,10 +2,6 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import { $t } from '#/locales';
 
-// 博客前台（blog-web）独立站点地址，由环境变量注入：开发 http://localhost:3000、生产 http://123.57.41.200
-const BLOG_WEB_URL =
-  import.meta.env.VITE_GLOB_BLOG_WEB_URL || 'http://localhost:3000';
-
 const routes: RouteRecordRaw[] = [
   {
     meta: {
@@ -276,17 +272,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('#/views/tech/index.vue'),
   },
   {
-    // 外链菜单：不配置 authority，所有角色可见；点击菜单在新窗口打开博客前台，
-    // 不会真的渲染本路由，component 仅作为占位（直接访问该地址时展示 404）
+    // 「博客前台」入口：不配置 authority，所有角色可见。
+    // 点击后进入中转页，由中转页带上当前登录 token + 角色跳转到博客前台，
+    // 前台拿到 token 即为登录态，评论无需二次登录；前台再按角色隐藏管理员不该看到的模块
     meta: {
       icon: 'lucide:external-link',
-      link: BLOG_WEB_URL,
       order: 17,
       title: '博客前台',
     },
     name: 'BlogWeb',
     path: '/blog-web',
-    component: () => import('#/views/_core/fallback/not-found.vue'),
+    component: () => import('#/views/_core/blog-web/index.vue'),
   },
 ];
 

@@ -13,10 +13,14 @@ import {
 import { ref } from 'vue';
 
 import { useTheme, type ThemeName } from '@/composables/useTheme';
+import { CMS_URL, getStoredUser } from '@/api';
 import ChatWidget from '@/components/ChatWidget.vue';
 
 const { mode, themeName, current, THEMES, toggleMode, setThemeName } = useTheme();
 const themeOpen = ref(false);
+
+// 管理员账号不展示智能客服（客服由管理员在后台回复，前台弹窗只给普通用户/访客）
+const isAdmin = getStoredUser()?.role === 'admin';
 
 function pickTheme(n: ThemeName) {
   setThemeName(n);
@@ -119,7 +123,7 @@ function pickTheme(n: ThemeName) {
           </div>
 
           <a
-            href="http://localhost:5666"
+            :href="CMS_URL"
             target="_blank"
             class="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/70 px-3.5 py-2 text-sm font-medium text-slate-700 transition-all hover:border-brand-300 hover:text-brand-600 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:text-brand-400"
           >
@@ -165,7 +169,7 @@ function pickTheme(n: ThemeName) {
       </div>
     </footer>
 
-    <!-- ============ 智能客服 ============ -->
-    <ChatWidget />
+    <!-- ============ 智能客服（管理员账号不显示） ============ -->
+    <ChatWidget v-if="!isAdmin" />
   </div>
 </template>

@@ -16,6 +16,10 @@
 !client/.env.development
 !client/.env.production
 
+# blog-web 的构建期配置：仅站点地址，不含任何密钥
+!blog-web/.env.development
+!blog-web/.env.production
+
 # ---- Node 依赖与构建产物 ----
 node_modules/
 # 子项目 dist 忽略（blog-web/ client/ server/ 各自内部的构建产物）
