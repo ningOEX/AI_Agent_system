@@ -2,8 +2,9 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import { $t } from '#/locales';
 
-// 博客前台（blog-web）独立站点地址，与前台站点里硬编码的 CMS 地址对称
-const BLOG_WEB_URL = 'http://localhost:3000';
+// 博客前台（blog-web）独立站点地址，由环境变量注入：开发 http://localhost:3000、生产 http://123.57.41.200
+const BLOG_WEB_URL =
+  import.meta.env.VITE_GLOB_BLOG_WEB_URL || 'http://localhost:3000';
 
 const routes: RouteRecordRaw[] = [
   {
