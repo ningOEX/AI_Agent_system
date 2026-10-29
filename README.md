@@ -12,6 +12,22 @@
 | 数据库 | MongoDB（本地 mongod 或容器） |
 | 部署 | Docker Compose + Nginx |
 
+## 系统架构
+
+![系统架构图](docs/architecture.svg)
+
+三层结构：浏览器访问层 → Nginx 网关（静态托管 + `/api` 反代 + SSE 关缓冲）→ Express 服务层（JWT/RBAC、审计留痕、限流、定时任务），数据落 MongoDB 容器（内网隔离 + 卷持久化），AI 与文件存储分别走 DashScope 和阿里云 OSS。
+
+## 功能截图
+
+| 前台首页 | 文章详情 |
+|---|---|
+| ![前台首页](docs/screenshots/blog-home.png) | ![文章详情](docs/screenshots/blog-detail.png) |
+
+| 智能客服弹窗 | 后台登录页 |
+|---|---|
+| ![智能客服](docs/screenshots/blog-chat.png) | ![后台登录](docs/screenshots/admin-login.png) |
+
 ## 目录结构
 
 ```
